@@ -87,12 +87,20 @@ const SAMPLE_MARKERS = {
   "2026-10-20": { en: "Diwali (sample)", hi: "दीवाली (नमूना)", kn: "ದೀಪಾವಳಿ (ಮಾದರಿ)", ta: "தீபாவளி (மாதிரி)" },
 };
 
+const NATIONAL_HOLIDAYS = {
+  "2026-1-26": { en: "Republic Day", hi: "गणतंत्र दिवस", kn: "ಗಣರಾಜ್ಯೋತ್ಸವ", ta: "குடியரசு தினம்" },
+  "2026-5-01": { en: "Labour Day", hi: "श्रम दिवस", kn: "ಶ್ರಮ ದಿನ", ta: "தொழிலாளர் தினம்" },
+  "2026-8-15": { en: "Independence Day", hi: "स्वतंत्रता दिवस", kn: "ಸ್ವಾತಂತ್ರ್ಯ ದಿನ", ta: "சுதந்திர தினம்" },
+  "2026-10-02": { en: "Gandhi Jayanti", hi: "गाँधी जयंती", kn: "ಗಾಂಧಿ ಜಯಂತಿ", ta: "காந்தி ஜெயந்தி" },
+};
+
 export default function NativeCalendar() {
   const today = new Date();
   const [lang, setLang] = useState("en");
   const [showNative, setShowNative] = useState(true);
   const [cursor, setCursor] = useState({ y: today.getFullYear(), m: today.getMonth() });
   const [selected, setSelected] = useState(today);
+  const [hovered, setHovered] = useState(null);
 
   const fontFamily = LANGS[lang].font + ", Inter, sans-serif";
 
@@ -118,52 +126,74 @@ export default function NativeCalendar() {
     d && cursor.y === today.getFullYear() && cursor.m === today.getMonth() && d === today.getDate();
   const isSelected = (d) =>
     d && cursor.y === selected.getFullYear() && cursor.m === selected.getMonth() && d === selected.getDate();
+  const isHovered = (d) =>
+    d && hovered && cursor.y === hovered.getFullYear() && cursor.m === hovered.getMonth() && d === hovered.getDate();
+  const isSecondarySelection = (d) => !isToday(d) && (isHovered(d) || isSelected(d));
+  const isHolidayDate = (dateObj) => {
+    if (!dateObj) return false;
+    if (dateObj.getDay() === 0) return true;
+    const key = `${dateObj.getFullYear()}-${dateObj.getMonth() + 1}-${dateObj.getDate()}`;
+    return !!NATIONAL_HOLIDAYS[key];
+  };
+
+  const holidayFor = (d) => {
+    if (!d) return null;
+    const key = `${cursor.y}-${cursor.m + 1}-${d}`;
+    return NATIONAL_HOLIDAYS[key] || null;
+  };
 
   const markerFor = (d) => {
     if (!d) return null;
     const key = `${cursor.y}-${cursor.m + 1}-${d}`;
-    return SAMPLE_MARKERS[key] || null;
+    return SAMPLE_MARKERS[key] || holidayFor(d) || null;
   };
 
   const nativeMonthName = showNative && lang !== "en" ? NATIVE_MONTHS[lang][cursor.m] : null;
 
   return (
-    <div style={{ background: COLORS.paper, fontFamily, color: COLORS.ink, minHeight: "100%" }} className="w-full flex justify-center p-4 sm:p-6">
+    <div style={{ background: COLORS.paper, fontFamily, color: COLORS.ink, minHeight: "100vh" }} className="w-full flex justify-center p-4 sm:p-6">
       <style>{FONT_IMPORT}</style>
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <h1 style={{ fontFamily: "Fraunces, serif", fontWeight: 600 }} className="text-2xl">
-            {UI_TEXT.appName[lang]}
-          </h1>
-          <div className="flex items-center gap-1 rounded-full p-1" style={{ background: COLORS.panel, border: `1px solid ${COLORS.line}` }}>
-            <Globe size={14} style={{ color: COLORS.muted, marginLeft: 6 }} />
-            {Object.keys(LANGS).map((code) => (
-              <button
-                key={code}
-                onClick={() => setLang(code)}
-                style={{
-                  fontFamily: LANGS[code].font + ", Inter, sans-serif",
-                  background: lang === code ? COLORS.ink : "transparent",
-                  color: lang === code ? COLORS.paper : COLORS.ink,
-                }}
-                className="text-xs px-2.5 py-1 rounded-full transition-colors"
-              >
-                {LANGS[code].self}
-              </button>
-            ))}
+      <div className="w-full max-w-[430px] mx-auto">
+        <div className="flex items-start justify-between mb-4 gap-4">
+          <div style={{ fontFamily: "Fraunces, serif", fontWeight: 500 }} className="leading-tight">
+            <div className="text-[12px]" style={{ color: COLORS.muted }}>{UI_TEXT.today[lang]}</div>
+            <div className="text-[26px]">
+              {WEEK_FULL[lang][selected.getDay()]}, {toNativeDigits(selected.getDate(), lang)} {MONTHS[lang][selected.getMonth()]} {toNativeDigits(selected.getFullYear(), lang)}
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-1 rounded-full p-1 shadow-sm" style={{ background: COLORS.panel, border: `1px solid ${COLORS.line}` }}>
+              <Globe size={14} style={{ color: COLORS.muted, marginLeft: 6 }} />
+              {Object.keys(LANGS).map((code) => (
+                <button
+                  key={code}
+                  onClick={() => setLang(code)}
+                  style={{
+                    fontFamily: LANGS[code].font + ", Inter, sans-serif",
+                    background: lang === code ? COLORS.ink : "transparent",
+                    color: lang === code ? COLORS.paper : COLORS.ink,
+                    borderRadius: 999,
+                    padding: "6px 10px",
+                    fontSize: 14,
+                    minWidth: 52,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {LANGS[code].self}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Card */}
         <div className="rounded-2xl overflow-hidden" style={{ background: COLORS.panel, border: `1px solid ${COLORS.line}` }}>
-          {/* Month nav */}
-          <div className="flex items-center justify-between px-4 py-4" style={{ background: COLORS.ink, color: COLORS.paper }}>
+          <div className="flex items-center justify-between px-4 py-4" style={{ background: COLORS.ink, color: COLORS.paper, minHeight: 72 }}>
             <button onClick={() => changeMonth(-1)} aria-label="Previous month" className="p-1 rounded-full hover:opacity-70">
-              <ChevronLeft size={20} />
+              <ChevronLeft size={22} />
             </button>
             <div className="text-center">
-              <div style={{ fontFamily: "Fraunces, serif", fontWeight: 500 }} className="text-lg leading-tight">
+              <div style={{ fontFamily: "Fraunces, serif", fontWeight: 700, fontSize: 28, lineHeight: 1.2 }}>
                 {MONTHS[lang][cursor.m]} {toNativeDigits(cursor.y, lang)}
               </div>
               {nativeMonthName && (
@@ -173,56 +203,74 @@ export default function NativeCalendar() {
               )}
             </div>
             <button onClick={() => changeMonth(1)} aria-label="Next month" className="p-1 rounded-full hover:opacity-70">
-              <ChevronRight size={20} />
+              <ChevronRight size={22} />
             </button>
           </div>
 
-          {/* Native calendar toggle */}
           <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: `1px solid ${COLORS.line}` }}>
-            <span className="text-xs" style={{ color: COLORS.muted }}>{UI_TEXT.nativeToggle[lang]}</span>
+            <span className="text-[14px]" style={{ color: COLORS.muted }}>{UI_TEXT.nativeToggle[lang]}</span>
             <button
               onClick={() => setShowNative((s) => !s)}
-              className="w-9 h-5 rounded-full relative transition-colors"
-              style={{ background: showNative ? COLORS.teal : COLORS.line }}
+              className="relative transition-colors"
+              style={{ width: 38, height: 22, borderRadius: 999, background: showNative ? COLORS.teal : COLORS.line, border: "none" }}
               aria-pressed={showNative}
             >
               <span
-                className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
-                style={{ transform: showNative ? "translateX(18px)" : "translateX(2px)" }}
+                className="absolute top-1 w-4 h-4 rounded-full bg-white"
+                style={{ left: showNative ? 19 : 3, transition: "left 0.2s ease" }}
               />
             </button>
           </div>
 
-          {/* Weekday row */}
           <div className="grid grid-cols-7 px-3 pt-3">
             {WEEK_SHORT[lang].map((w, i) => (
-              <div key={i} className="text-center text-[11px] py-1" style={{ color: COLORS.muted }}>
+              <div
+                key={i}
+                className="text-center text-[11px] py-1 font-medium"
+                style={{ color: i === 0 ? "#D74440" : COLORS.muted }}
+              >
                 {w}
               </div>
             ))}
           </div>
 
-          {/* Day grid */}
-          <div className="grid grid-cols-7 gap-y-1 px-3 pb-4">
+          <div className="grid grid-cols-7 gap-x-2 gap-y-2 px-3 pb-4 pt-1">
             {grid.map((d, i) => {
               const marker = markerFor(d);
+              const shouldUseSecondary = isSecondarySelection(d);
+              const dateObj = d ? new Date(cursor.y, cursor.m, d) : null;
+              const isHoliday = d && isHolidayDate(dateObj);
+              const currentDayStyle = isToday(d)
+                ? { background: COLORS.ink, color: COLORS.paper, borderRadius: "50%", width: 42, height: 42, margin: "auto" }
+                : shouldUseSecondary
+                  ? { background: "#DDE7FF", color: COLORS.ink, borderRadius: 10, width: 42, height: 42, margin: "auto" }
+                  : { background: isHoliday ? "rgba(215, 68, 64, 0.10)" : "transparent", color: isHoliday ? "#D74440" : COLORS.ink, borderRadius: isHoliday ? 10 : "50%", width: 42, height: 42, margin: "auto" };
+
               return (
                 <button
                   key={i}
                   disabled={!d}
-                  onClick={() => d && setSelected(new Date(cursor.y, cursor.m, d))}
-                  className="aspect-square flex flex-col items-center justify-center rounded-full text-sm relative"
+                  onClick={() => {
+                    if (!d) return;
+                    const nextDate = new Date(cursor.y, cursor.m, d);
+                    setSelected(nextDate);
+                    setHovered(null);
+                  }}
+                  onMouseEnter={() => d && setHovered(new Date(cursor.y, cursor.m, d))}
+                  onMouseLeave={() => setHovered(null)}
+                  className="flex flex-col items-center justify-center text-[18px] relative transition-all duration-150"
                   style={{
-                    background: isSelected(d) ? COLORS.ink : isToday(d) ? "#F1E4C7" : "transparent",
-                    color: isSelected(d) ? COLORS.paper : COLORS.ink,
+                    ...currentDayStyle,
                     visibility: d ? "visible" : "hidden",
+                    fontFamily: "Fraunces, serif",
+                    fontWeight: 500,
                   }}
                 >
-                  <span style={{ fontFamily: "Fraunces, serif" }}>{d ? toNativeDigits(d, lang) : ""}</span>
+                  <span>{d ? toNativeDigits(d, lang) : ""}</span>
                   {marker && (
                     <span
                       className="absolute bottom-1 w-1.5 h-1.5 rounded-full"
-                      style={{ background: isSelected(d) ? COLORS.saffron : COLORS.maroon }}
+                      style={{ background: isSelected(d) || isHovered(d) ? COLORS.saffron : COLORS.maroon }}
                     />
                   )}
                 </button>
@@ -231,12 +279,11 @@ export default function NativeCalendar() {
           </div>
         </div>
 
-        {/* Selected date detail */}
         <div className="mt-4 rounded-2xl p-4" style={{ background: COLORS.panel, border: `1px solid ${COLORS.line}` }}>
           <div className="text-xs" style={{ color: COLORS.muted }}>
             {isToday(selected.getDate()) && selected.getMonth() === cursor.m ? UI_TEXT.today[lang] : "\u00A0"}
           </div>
-          <div style={{ fontFamily: "Fraunces, serif", fontWeight: 500 }} className="text-xl mt-1">
+          <div style={{ fontFamily: "Fraunces, serif", fontWeight: 500, fontSize: 34, lineHeight: 1.15 }} className="mt-1">
             {WEEK_FULL[lang][selected.getDay()]}, {toNativeDigits(selected.getDate(), lang)} {MONTHS[lang][selected.getMonth()]} {toNativeDigits(selected.getFullYear(), lang)}
           </div>
           {showNative && lang !== "en" && (
@@ -244,9 +291,9 @@ export default function NativeCalendar() {
               {NATIVE_MONTHS[lang][selected.getMonth()]} &middot; {NATIVE_SYSTEM_LABEL[lang]}
             </div>
           )}
-          {markerFor(selected.getDate()) && (
-            <div className="mt-2 text-sm px-2.5 py-1 rounded-full inline-block" style={{ background: "#F6E4D8", color: COLORS.maroon }}>
-              {markerFor(selected.getDate())[lang]}
+          {(holidayFor(selected.getDate()) || markerFor(selected.getDate())) && (
+            <div className="mt-2 text-sm px-2.5 py-1 rounded-full inline-block" style={{ background: "#FDE8E7", color: "#D74440" }}>
+              {(holidayFor(selected.getDate()) || markerFor(selected.getDate()))[lang]}
             </div>
           )}
           <div className="mt-3 text-[11px] leading-snug" style={{ color: COLORS.muted }}>
